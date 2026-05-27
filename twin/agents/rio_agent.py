@@ -49,15 +49,25 @@ CARTS = {
         "egg": "https://raw.githubusercontent.com/kody-w/rio/main/rio.egg"},
 }
 
+# The live social rooms RIO can read (on the always-on resident host).
+SOCIAL = {
+    "rappterbook": {"name": "rappterbook", "icon": "📖", "desc": "the agent social network — profiles, feed, follows, karma",
+        "app": "https://kody-w.github.io/rappterbook-commons/"},
+    "commons": {"name": "the Commons", "icon": "🏛️", "desc": "the signed social stream — say hi, meet agents",
+        "app": "https://kody-w.github.io/rapp-commons/"},
+    "rapp-god-forum": {"name": "rapp-god forum", "icon": "👁️", "desc": "threaded discussion of the whole stack",
+        "app": "https://kody-w.github.io/rapp-god-forum/"},
+}
+
 LINKS = {
-    "home": [("carts", "rapp://carts"), ("map", "rapp://map"), ("registry", "rapp://registry"), ("about", "rapp://about")],
+    "home": [("social", "rapp://social"), ("carts", "rapp://carts"), ("map", "rapp://map"), ("registry", "rapp://registry"), ("about", "rapp://about")],
 }
 
 
 def _page(title, body, links):
     out = title + "\n" + "=" * len(title) + "\n\n" + body.strip() + "\n"
     if links:
-        out += "\n— links —\n" + "\n".join("» %-16s %s" % (lbl, addr) for lbl, addr in links)
+        out += "\n— links —\n" + "\n".join("» %-22s %s" % (lbl, addr) for lbl, addr in links)
     return out
 
 
@@ -145,6 +155,17 @@ def _about():
         [("home", "rapp://home")])
 
 
+def _social():
+    body = ("The commons — live, signed social rooms on the always-on resident host.\n"
+            "Read a room right here in RIO, or open its full app to post.\n\n")
+    for s in SOCIAL.values():
+        body += "  %s  %s — %s\n" % (s["icon"], s["name"], s["desc"])
+    links = [("read: " + s["name"], "room:" + rid) for rid, s in SOCIAL.items()]
+    links += [("open " + s["name"], s["app"]) for s in SOCIAL.values()]
+    links.append(("home", "rapp://home"))
+    return _page("The commons (social)", body, links)
+
+
 class RioAgent(BasicAgent):
     def __init__(self):
         self.name = "RIO"
@@ -170,6 +191,8 @@ class RioAgent(BasicAgent):
             return _registry()
         if addr == "about":
             return _about()
+        if addr == "social":
+            return _social()
         if addr.startswith("cart:"):
             return _cart(addr[5:])
         if addr.startswith("http"):

@@ -34,6 +34,8 @@
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script>
 const EGG="https://raw.githubusercontent.com/kody-w/rio/main/rio.egg";
+const RESIDENT="https://rapp-resident-kw165843.azurewebsites.net/api";
+const ROOM_APP={ rappterbook:"https://kody-w.github.io/rappterbook-commons/", commons:"https://kody-w.github.io/rapp-commons/", "rapp-god-forum":"https://kody-w.github.io/rapp-god-forum/" };
 const $=id=>document.getElementById(id); let py=null, hist=[];
 async function boot(){
   py=await loadPyodide(); $('status').textContent="fetching RIO…";
@@ -44,11 +46,27 @@ async function boot(){
 }
 async function navigate(addr, push=true){
   addr=(addr||'home').replace(/^rapp:\/\//,'')||'home'; $('addr').value=addr;
+  if(addr.startsWith('room:')) return navigateRoom(addr.slice(5), push);
   if(push) hist.push(addr); $('status').textContent="→ rapp://"+addr;
   let text;
   try{ text=await py.runPythonAsync(`str(_rio.perform(go=${JSON.stringify(addr)}))`); }
   catch(e){ text="Error\n====\n\n"+e; }
   render(text); $('status').textContent="rapp://"+addr;
+}
+async function navigateRoom(name, push=true){
+  if(push) hist.push('room:'+name); $('addr').value='room:'+name; $('status').textContent="→ #"+name;
+  let body='', evs=[];
+  try{ evs=((await (await fetch(`${RESIDENT}/rooms/${name}/events`,{cache:'no-store'})).json()).events)||[]; }
+  catch(e){ body='(could not reach the resident host)\n'; }
+  const prof={}; for(const e of evs) if(e.kind==='profile'){ const p=e.body||{}; prof[e.from]={name:p.name,av:p.avatar}; }
+  const feed=evs.filter(e=>e.kind==='post'||e.kind==='hello').slice(-25);
+  if(feed.length) for(const e of feed){ const p=prof[e.from]||{}; const who=(p.av?p.av+' ':'')+(p.name||e.from.replace('rappid:v3:','').slice(0,10)); body+=who+': '+((e.body||{}).text||'')+'\n'; }
+  else body+='(no posts yet — open the full app to say hello)\n';
+  const app=ROOM_APP[name]||'https://kody-w.github.io/';
+  const links=[['↻ refresh','room:'+name],['open the full app (post)',app],['social','rapp://social'],['home','rapp://home']];
+  const title='live: #'+name;
+  render(title+'\n'+'='.repeat(title.length)+'\n\n'+body+'\n— links —\n'+links.map(x=>'» '+x[0]+'  '+x[1]).join('\n'));
+  $('status').textContent="rapp://room:"+name;
 }
 function render(text){
   const parts=text.split(/\n— links —\n/); const head=parts[0]; const linkblock=parts[1]||'';
