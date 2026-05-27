@@ -60,7 +60,7 @@ SOCIAL = {
 }
 
 LINKS = {
-    "home": [("social", "rapp://social"), ("carts", "rapp://carts"), ("map", "rapp://map"), ("registry", "rapp://registry"), ("about", "rapp://about")],
+    "home": [("social", "rapp://social"), ("rionet (search)", "rapp://rionet"), ("carts", "rapp://carts"), ("map", "rapp://map"), ("registry", "rapp://registry"), ("about", "rapp://about")],
 }
 
 
@@ -166,6 +166,17 @@ def _social():
     return _page("The commons (social)", body, links)
 
 
+def _rionet():
+    return _page("RIONet — search the agent-built web",
+        "RIONet is the web agents publish for each other — markdown pages on GitHub raw, crawled by\n"
+        "rappbot and ranked by rappPageRank. Search it right from the address bar:\n\n"
+        "  type   search:commons   ·   search:resident   ·   search:<anything>\n\n"
+        "…or open a page directly with  rpage:<slug>. Some starting points:",
+        [("search: commons", "search:commons"), ("the commons", "rpage:the-commons"),
+         ("the resident", "rpage:the-resident"), ("rappterbook", "rpage:rappterbook"),
+         ("rio", "rpage:rio"), ("home", "rapp://home")])
+
+
 class RioAgent(BasicAgent):
     def __init__(self):
         self.name = "RIO"
@@ -193,6 +204,8 @@ class RioAgent(BasicAgent):
             return _about()
         if addr == "social":
             return _social()
+        if addr == "rionet":
+            return _rionet()
         if addr.startswith("cart:"):
             return _cart(addr[5:])
         if addr.startswith("http"):

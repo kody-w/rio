@@ -36,6 +36,7 @@
 const EGG="https://raw.githubusercontent.com/kody-w/rio/main/rio.egg";
 const RESIDENT="https://rapp-resident-kw165843.azurewebsites.net/api";
 const ROOM_APP={ rappterbook:"https://kody-w.github.io/rappterbook-commons/", commons:"https://kody-w.github.io/rapp-commons/", "rapp-god-forum":"https://kody-w.github.io/rapp-god-forum/" };
+const RIONET="https://raw.githubusercontent.com/kody-w/rionet/main/index.json"; let _idx=null;
 const $=id=>document.getElementById(id); let py=null, hist=[];
 async function boot(){
   py=await loadPyodide(); $('status').textContent="fetching RIO…";
@@ -47,6 +48,8 @@ async function boot(){
 async function navigate(addr, push=true){
   addr=(addr||'home').replace(/^rapp:\/\//,'')||'home'; $('addr').value=addr;
   if(addr.startsWith('room:')) return navigateRoom(addr.slice(5), push);
+  if(addr.startsWith('search:')) return navigateSearch(addr.slice(7), push);
+  if(addr.startsWith('rpage:')) return navigateRpage(addr.slice(6), push);
   if(push) hist.push(addr); $('status').textContent="→ rapp://"+addr;
   let text;
   try{ text=await py.runPythonAsync(`str(_rio.perform(go=${JSON.stringify(addr)}))`); }
@@ -67,6 +70,37 @@ async function navigateRoom(name, push=true){
   const title='live: #'+name;
   render(title+'\n'+'='.repeat(title.length)+'\n\n'+body+'\n— links —\n'+links.map(x=>'» '+x[0]+'  '+x[1]).join('\n'));
   $('status').textContent="rapp://room:"+name;
+}
+async function rioIndex(){ if(_idx)return _idx; try{ _idx=((await (await fetch(RIONET,{cache:'no-store'})).json()).pages)||[]; }catch(e){ _idx=[]; } return _idx; }
+async function navigateSearch(q, push=true){
+  if(push) hist.push('search:'+q); $('addr').value='search:'+q; $('status').textContent="🔎 "+q;
+  const pages=await rioIndex(), terms=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits=pages.map(p=>{ const hay=(p.title+' '+(p.snippet||'')).toLowerCase(); let m=0; for(const t of terms) if(hay.includes(t)) m++;
+      return {p, s: terms.length ? (m? m+(p.rank||0)*4 : 0) : (p.rank||0)}; }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s);
+  let body=`rappbot · ${hits.length} result(s) for "${q}" — ranked by rappPageRank\n\n`; const links=[];
+  for(const {p} of hits.slice(0,12)){ body+=`  ${p.title}   [rank ${(p.rank||0).toFixed(3)}]\n     ${(p.snippet||'').slice(0,130)}…\n\n`; links.push(['→ '+p.title,'rpage:'+p.slug]); }
+  if(!hits.length) body+='  nothing found — try another term, or browse  rapp://rionet\n';
+  links.push(['rionet','rapp://rionet'],['home','rapp://home']);
+  const title='🔎 search: '+q;
+  render(title+'\n'+'='.repeat(title.length)+'\n\n'+body+'\n— links —\n'+links.map(x=>'» '+x[0]+'  '+x[1]).join('\n'));
+  $('status').textContent="rapp://search:"+q;
+}
+function _mdToRio(md, fallbackTitle){           // SAFE: never injects page HTML/JS — render() escapes everything
+  md=md.replace(/^---[\s\S]*?---\s*/,'');
+  const links=[];
+  md=md.replace(/\[([^\]]+)\]\((rpage:[a-z0-9-]+|https?:[^)\s]+)\)/g,(m,label,addr)=>{ links.push([label.trim(),addr.trim()]); return label; });
+  let title=fallbackTitle||'page'; const h=md.match(/^#\s+(.+)$/m); if(h) title=h[1].trim();
+  const body=md.replace(/^#{1,6}\s+/gm,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/`([^`]+)`/g,'$1').trim();
+  links.push(['↩ search again','search:'],['rionet','rapp://rionet'],['home','rapp://home']);
+  return title+'\n'+'='.repeat(title.length)+'\n\n'+body+'\n— links —\n'+links.map(x=>'» '+x[0]+'  '+x[1]).join('\n');
+}
+async function navigateRpage(slug, push=true){
+  if(push) hist.push('rpage:'+slug); $('addr').value='rpage:'+slug; $('status').textContent="→ "+slug;
+  const pages=await rioIndex(), pg=pages.find(p=>p.slug===slug);
+  if(!pg){ render('Not found\n=========\n\nNo page "'+slug+'" in the RIONet index.\n\n— links —\n» search  search:\n» home  rapp://home'); return; }
+  let md=''; try{ md=await (await fetch(pg.url,{cache:'no-store'})).text(); }catch(e){ md='(could not fetch the page source)'; }
+  render(_mdToRio(md, pg.title));
+  $('status').textContent="rapp://rpage:"+slug;
 }
 function render(text){
   const parts=text.split(/\n— links —\n/); const head=parts[0]; const linkblock=parts[1]||'';
