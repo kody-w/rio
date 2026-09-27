@@ -1,5 +1,9 @@
 # 🌐 RIO — Rapplication Internet Online
 
+<!-- rapp1:network-header:start -->
+[![RAPP/1](https://kody-w.github.io/rapp-hive-public/portfolio/badges/rio.svg)](https://github.com/kody-w/rapp-hive-public/blob/main/portfolio/repos/rio.md) · **New to RAPP?** [Start here: get your Brainstem →](https://github.com/kody-w/rapp-installer#start-here)
+<!-- rapp1:network-header:end -->
+
 An **early‑web‑style browser** for the RACon ecosystem — a rapplication you load into RACon to
 **browse and use the kited ecosystem online**.
 
